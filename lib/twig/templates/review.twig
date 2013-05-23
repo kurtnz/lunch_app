@@ -1,0 +1,614 @@
+<!doctype html>
+<!--[if lt IE 7]> <html class="no-js lt-ie9 lt-ie8 lt-ie7" lang="en"> <![endif]-->
+<!--[if IE 7]>    <html class="no-js lt-ie9 lt-ie8" lang="en"> <![endif]-->
+<!--[if IE 8]>    <html class="no-js lt-ie9" lang="en"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en"> <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title></title>
+  <meta name="description" content="">
+
+  <meta name="viewport" content="width=device-width">
+  <link rel="stylesheet" href="web/static/css/bootstrap.css">
+  <link rel="stylesheet" href="web/static/css/fullcalendar.css">
+  <link rel="stylesheet" href="web/static/css/fullcalendar.print.css" media="print">
+  <style type="text/css">
+            #calendar {
+                width:900px;
+                margin:0 auto;
+            }
+            .selected {
+            	background:red;
+            }
+  </style>
+  <script src="web/static/js/libs/modernizr.js"></script>
+</head>
+<body>
+
+	<!--div id="calendar"></div-->
+
+	<!--div class="container">
+		<section id="review">
+			<a href="#" class="btn btn-primary pull-right" id="send-email">Send email to Hector Woodleys</a>
+
+			<table class="order-list table table-bordered table-striped">
+				<thead>
+					<th>Person</th>
+					<th>Tuesday</th>
+					<th>Wednesday</th>
+					<th>Thursday</th>
+				</thead>
+				<tbody></tbody>
+			</table>
+
+		</section>
+	</div-->
+
+	<script src="web/static/js/libs/jquery.js"></script>
+	<script src="web/static/js/libs/underscore.js"></script>
+	<script src="web/static/js/libs/backbone.js"></script>
+	<script src="web/static/js/libs/fullcalendar.min.js"></script>
+	<script src="web/static/js/libs/date.js"></script>
+	<script>
+	    $(document).ready(function() {
+
+	        var date = new Date();
+	        var d = date.getDate();
+	        var m = date.getMonth();
+	        var y = date.getFullYear();
+
+	        /*$('#calendar').fullCalendar({
+	            editable: true
+	        });*/
+
+	    });
+
+		var days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+		var months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+		// Get the date for the start of the week
+		Date.prototype.getWeek = function(start) {
+			//Calcing the starting point
+			start = start || 1;
+			var today = new Date(this.setHours(0, 0, 0, 0));
+			var day = today.getDay() - start;
+			var date = today.getDate() - day;
+
+			// Grabbing Start Date
+			var StartDate = new Date(today.setDate(date));
+			return StartDate;
+		}
+
+		/*var users = [
+			{name: 'Kurt'},
+			{name: 'Zoe'},
+			{name: 'Ryan'},
+			{name: 'David.B'},
+			{name: 'Sarah'},
+			{name: 'Yohan'},
+			{name: 'David.G'},
+			{name: 'Nick'},
+			{name: 'Matt'},
+			{name: 'Thilanga'},
+			{name: 'Jess'},
+			{name: 'Dan'},
+			{name: 'Graeme'},
+			{name: 'Gary'},
+			{name: 'Bronwyn'},
+			{name: 'Sylvia'}
+		];*/
+
+		/*var days = [
+			{day: 'Tuesday'},
+			{day: 'Wednesday'},
+			{day: 'Thursday'}
+		];*/
+
+		$(function() {
+
+			/*
+			*
+			* Models
+			*
+			*/
+
+			// App state model
+			var StateModel = Backbone.Model.extend();
+
+			// Users Model
+			var UserModel = Backbone.Model.extend();
+
+			// Order Model
+			var OrderModel = Backbone.Model.extend();
+
+			// Model to keep track of dates that user wants to add orders to
+			var OrderDaysModel = Backbone.Model.extend();
+
+			// Food types (categories)
+			var FoodTypeModel = Backbone.Model.extend();
+
+			// Food
+			var FoodModel = Backbone.Model.extend();
+
+
+			/*
+			*
+			* Collections
+			*
+			*/
+
+			// User Collection
+			var UserCollection = Backbone.Collection.extend({
+				model: UserModel,
+				url: '/api/users'
+			});
+
+			// Review orders
+			var OrdersCollection = Backbone.Collection.extend({
+				model: OrderModel,
+				url: '/api/orders'
+			});
+
+			// Collection to keep track of dates that user wants to add orders to
+			var OrderDaysCollection = Backbone.Collection.extend({
+				model: OrderDaysModel
+			});
+
+			// Food types (categories)
+			var FoodTypeCollection = Backbone.Collection.extend({
+				model: FoodTypeModel,
+				url: '/api/food-types'
+			});
+
+			// Food
+			var FoodCollection = Backbone.Collection.extend({
+				model: FoodModel,
+				url: '/api/food'
+			});
+
+			/*
+			*
+			* Views
+			*
+			*/
+
+			// Display dropdown list of users
+			var UserView = Backbone.View.extend({
+				initialize: function() {
+					this.listUsers();
+				},
+				events: {
+					'change select': 'userSelected'
+				},
+				template:_.template($('#userList').html()),
+				// Get all users
+				listUsers: function() {
+					$('body').append('<select />');
+					var that = this;
+					_.each(this.collection.models, function(user){
+						$('select').append(that.template(user.toJSON()));
+					});
+					return that.$el;
+				},
+				// User has been selected
+				userSelected: function(e) {
+					stateModel.set('user', e.currentTarget.value);
+					approuter.navigate('calendar', true);
+				}
+			});
+
+			// Add order button
+			var AddOrderButtonView = Backbone.View.extend({
+				initialize:function() {
+					this.render();
+				},
+				template:_.template($('#addOrderButton').html()),
+				events: {
+					'click .add-order': 'addOrder'
+				},
+				render: function() {
+					// Add "Add order" button
+					this.$el.prepend(this.template);
+				},
+				addOrder: function(e) {
+					e.preventDefault();
+					var addOrder = new AddOrder({
+						el: $('body'),
+						collection: this.collection
+					});
+				}
+			});
+
+			// Show the add order form
+			var AddOrder = Backbone.View.extend({
+				initialize: function(){
+					this.render();
+				},
+				template:_.template($('#addOrder').html()),
+				render: function() {
+
+					var that = this;
+
+					// Fetch the food types
+					var foodTypeCollection = new FoodTypeCollection();
+					foodTypeCollection.fetch({
+						success: function() {
+							// Fetch the food
+							var foodCollection = new FoodCollection();
+							foodCollection.fetch({
+								success: function() {
+									that.$el.append(that.template);
+
+									// Generate the add to order section for each day selected from calendar
+									_.each(that.collection.models, function(day) {
+										var addOrderSingle = new AddOrderSingle({
+											el: $('.add-order-container h1'),
+											model: day,
+											foodTypes: foodTypeCollection,
+											foods: foodCollection
+										});
+									});
+								}
+							});
+						}
+					});
+
+				}
+			});
+
+			// Add order - individual. Add an order form for each day selected in calendar
+			var AddOrderSingle = Backbone.View.extend({
+				initialize: function() {
+					this.render();
+				},
+				template: _.template($('#addOrderSingle').html()),
+				render: function() {
+					var d = this.model.toJSON();
+					var that = this;
+
+					this.$el.append(this.template({
+						"date":days[d.date.getDay()] + ' '  + months[d.date.getMonth()] + ', ' + d.date.getFullYear()
+					}));
+
+					// Get the food types
+					_.each(this.options.foodTypes.models, function(type) {
+						var foodTypeView = new FoodTypeView({
+							el:that.$el.find('section'),
+							model: type
+						});
+					});
+				}
+			});
+
+			// Food types list
+			var FoodTypeView = Backbone.View.extend({
+				initialize: function() {
+					this.render();
+				},
+				template:_.template($('#foodType').html()),
+				render: function() {
+					this.$el.append(this.template(this.model.toJSON()));
+				}
+			});
+
+			// Display  calendar with previous orders
+			var CalendarView = Backbone.View.extend({
+				initialize: function() {
+					this.createCalendar();
+				},
+				createCalendar: function() {
+
+					// Collection to save days user selects to add orders
+					var orderDays = this.options.daysCollection;
+
+					// Filter the collection to get the selected users previous orders
+					var archiveOrders = this.collection.where({ user : stateModel.get('user') });
+					var archiveOrdersArr = [];
+
+					// Create array of orders converted to JSON to send to the calendar
+					_.each(archiveOrders, function(order) {
+						archiveOrdersArr.push(order.toJSON());
+					});
+
+					// Empty $el and create the calendar
+					this.$el.html('');
+					this.$el.fullCalendar({
+						editable: true,
+						disableDragging:true,
+						// When user selects day from calendar save to collection
+						dayClick: function(date, allDay, e, view) {
+
+							// Show clicked days
+							$(e.currentTarget).toggleClass('selected');
+
+							// Add or remove days from orderDays collection
+							if( !$(e.currentTarget).hasClass('selected') ) {
+								orderDays.each(function(day) {
+									var selectedDate = date.getDay() + '/' + date.getMonth() + '/' + date.getFullYear();
+									var modelDate = day.get('date').getDay() + '/' + day.get('date').getMonth() + '/' + day.get('date').getFullYear();
+									if( selectedDate == modelDate ) {
+										orderDays.remove(day);
+									}
+								});
+							} else {
+								orderDays.push({date:date});
+							}
+						}
+					});
+
+					// Add the "Add order" button to the page
+					var addOrderButtonView = new AddOrderButtonView({
+						el:$('body'),
+						collection: orderDays
+					});
+
+					// Render orders for selected user to calendar
+					this.$el.fullCalendar('addEventSource', archiveOrdersArr);
+
+					//console.log(this.collection.toJSON());
+
+					//_.each(this.collection.models, function(order) {
+						//console.log(Date.parse( order.get('date') ).getTime()/1000);
+					//});
+
+					/*var that = this,
+						date = new Date().getWeek(),
+						day = date.getDate(),
+						month = date.getMonth() + 1,
+						year = date.getFullYear(),
+						searchDate = day + '/' + month + '/' + year;
+
+					that.$el.parents('table').before('<h2>Week: ' + day + '/' + month + '/' + year + '</h2>');
+
+					// Loop over users
+					for( var i=0; i<window.users.length; i++ ) {
+
+						var user = users[i].name;
+
+						// Create table row with username
+						that.$el.append(that.template(users[i]));
+
+						for( var x=0; x<days.length; x++ ) {
+
+							var userOrder = this.collection.where({user: user, day: days[x].day});
+
+							// Loop over each order
+							if( userOrder.length ) {
+								_.each(userOrder, function(order) {
+
+									// Get orders for current week only
+									if( order.get('week').trim() === searchDate ) {
+
+									 	//userOrderCollection.add(order);
+										var orderView = new OrderView({
+											model: order,
+											appendEl: that.$el.find('> tr:last-child table tr')
+										});
+									}
+								});
+							} else {
+								that.$el.find('> tr:last-child table tr').append('<td><a href="/#order/user/'+user+'/day/'+days[x].day+'" style="color:#ccc;">Add order</a></td>');
+							}
+
+						}
+
+					}*/
+				}
+			});
+
+			/*var OrderView = Backbone.View.extend({
+				tagName: 'td',
+				initialize: function() {
+					this.render();
+					this.model.bind('destroy', this.removeOrder, this);
+				},
+				events: {
+					'click .delete': 'deleteOrder'
+				},
+				template: _.template($('#userOrderList').html()),
+				render: function() {
+				console.log(this.model.toJSON());
+					this.options.appendEl.append($(this.el).append(this.template(this.model.toJSON())));
+				},
+				deleteOrder: function(e) {
+					this.model.destroy({
+						success: function() {
+							console.log('successful - model removed')
+						},
+						error: function() {
+							console.log('error - model not removed')
+						}
+					});
+					e.preventDefault();
+				},
+				removeOrder: function() {
+					$(this.el).text('');
+				}
+			});
+
+			var MailView = Backbone.View.extend({
+				el: '#send-email',
+				events: {
+					'click': 'sendEmail'
+				},
+				sendEmail: function(e) {
+					if( confirm('Are you sure you want to send an email to Hector Woodleys?') ) {
+						var that = this;
+						e.preventDefault();
+
+						var orderJSON = that.collection.toJSON()
+
+						$.ajax({
+							type: 'POST',
+							url: '/mail',
+							data: JSON.stringify(orderJSON),
+							success: function(data){
+								alert('Email has been sent');
+							}
+						});
+					}
+				}
+			});
+
+			var TotalsView = Backbone.View.extend({
+				el: 'section',
+				initialize: function() {
+					this.render();
+				},
+				render: function() {
+					var totals = [];
+
+					var date = new Date().getWeek(),
+						weekday = date.getDay(),
+						day = date.getDate(),
+						month = date.getMonth() + 1,
+						year = date.getFullYear()
+						thisweek = ' ' + day + '/' + month + '/' + year;
+
+						var weekOrders = this.collection.where({date: thisweek});
+
+					_.each(weekOrders, function(order) {
+						totals.push(order.toJSON().orderdetails);
+					});
+					totals.sort();
+					$('table.order-list').after('<ul />');
+
+					var stats = {},
+						potus = 0;
+					for (var i = totals.length; i--;) {
+					    if (!((potus = totals[i]) in stats)) {
+					    	stats[potus] = 0; // Initialize a new counter
+					    }
+						stats[potus]++;
+					}
+
+					// Print out totals
+					for( var total in stats ) {
+						// TODO print out totals.
+						if( total !== 'skip' ) {
+							$('ul').append('<li>' + total + ':' + stats[total] + '</li>');
+						}
+					}
+				}
+			});*/
+
+
+
+			// Router
+			var AppRouter = Backbone.Router.extend({
+				routes: {
+					'' : 'index',
+					'calendar' : 'calendar'
+				},
+				index: function() {
+					var userCollection = new UserCollection();
+					userCollection.fetch({
+						success: function(collection, response, options) {
+							var userView = new UserView({
+								collection:userCollection,
+								el:$('body')
+							});
+						}
+					});
+
+				},
+				calendar: function() {
+
+					// Orders collection
+					var ordersCollection = new OrdersCollection();
+
+					// Create collection to save days user selects to add orders
+					var orderDaysCollection = new OrderDaysCollection();
+
+					// Get data from database
+					ordersCollection.fetch({
+						success: function(collection, response, options) {
+
+							// Send email button view
+							// var mailView = new MailView({
+							// 	collection: reviewCollection
+							// });
+
+							// Order table view
+							var calendarView = new CalendarView({
+								collection: ordersCollection,
+								daysCollection: orderDaysCollection,
+								el: $('body')
+							});
+
+							// var totalsView = new TotalsView({
+							// 	collection: reviewCollection
+							// });
+						}
+					});
+
+				}
+			});
+
+			// Create state model to save the state of the app
+			var stateModel = new StateModel();
+
+			// Create router
+			var approuter = new AppRouter();
+			Backbone.history.start({pushState: true});
+
+		});
+	</script>
+
+	<script type="text/template" id="foodType">
+		<li><%=name%></li>
+	</script>
+
+	<script type="text/template" id="userList">
+		<option value="<%=name%>"><%=name%></option>
+	</script>
+
+	<script type="text/template" id="addOrderButton">
+		<a href="#" class="btn btn-primary add-order">Add order</a>
+	</script>
+
+	<script type="text/template" id="addOrderSingle">
+		<section>
+			<h2>Add order for <%=date%></h2>
+		</section>
+	</script>
+
+	<script type="text/template" id="orderList">
+		<tr>
+			<th class="user">
+				<%=name%>
+			</th>
+			<td class="orderDetails" colspan="4">
+				<table><tr></tr></table>
+			</td>
+		</tr>
+	</script>
+
+	<script type="text/template" id="userOrderList">
+		<% if (orderdetails !== 'skip') { %>
+			<%=orderdetails%> <a class="delete">&times;</a><br>
+			<small>
+			<% if(sandwichorwrap) { %>
+				<%=sandwichorwrap%>
+				<% if(breadtype) { %>
+					-
+					<%=breadtype%>
+				<% } %>
+			<% } else { %>
+				<%=ordertype%>
+			<% } %>
+			</small>
+			<br />
+			<small><%=comments%></small>
+		<% } %>
+	</script>
+
+	<script type="text/template" id="addOrder">
+		<div class="add-order-container">
+			<h1>Add Order</h1>
+		</div>
+	</script>
+
+</body>
+</html>

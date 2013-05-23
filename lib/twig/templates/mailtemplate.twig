@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title></title>
+</head>
+<body>
+<table width="100%" border="0" cellpadding="0" cellspacing="0" style="border: 0;" >
+    <tr>
+        <td align="center">
+            <table width="600" border="0" cellpadding="0" cellspacing="0" style="border: 0;" >
+                <tr>
+                    <td colspan="2"  style="padding: 20px 20px 40px 20px;">
+
+                        <p style="color: #333; font-family: arial, sans-serif; font-size: 18px; margin-bottom:30px;">August Lunch Orders</p>
+
+                        {#% debug data %#}  
+
+                        {% for order in data %}
+                            {% if loop.index == 1 %}
+                                <p style="color: #333; font-family: arial, sans-serif; font-size: 14px; font-weight:bold; text-align:left; margin-bottom:30px;">Week starting: {{ order.week }}</p>
+                            {% endif %}
+                        {% endfor %}
+
+
+                        {% set tuesdayOrderTitle = 0 %}
+
+                        {% for order in data %}
+
+                            {% if order.day == "Tuesday" and order.orderdetails != 'skip' and tuesdayOrderTitle == 0 %}
+
+                                <p style="color: #333; font-family: arial, sans-serif; font-size: 12px; font-weight:bold; text-align:left;">Tuesday ({{ order.date }}):</p>
+
+                                <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #DDD; border-bottom:none;">
+
+                                {% set tuesdayOrderTitle = 1 %}
+
+                            {% endif %}
+
+                            {% if order.day == "Tuesday" and order.orderdetails != 'skip' %}
+
+                                <tr>
+                                    <td width="150" style="color: #333; font-family: arial, sans-serif; font-size: 12px; padding:8px; border-bottom:1px solid #DDD;">{{ order.user }}</td>
+                                    <td style="color: #333; font-family: arial, sans-serif; font-size: 12px; padding:8px; border-bottom:1px solid #DDD;">
+                                        {{ order.orderdetails }}
+                                        {% if order.comments %}
+                                            <br />
+                                            Comments: {{ order.comments }}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+
+                            {% endif %}
+
+                            {% if loop.index == loop.length %}
+                                </table>
+                                <br />
+                            {% endif %}
+
+                        {% endfor %}
+
+
+
+
+                        {% set wednesdayOrderTitle = 0 %}
+
+                        {% for order in data %}
+
+                            {% if order.day == "Wednesday" and order.orderdetails != 'skip' and wednesdayOrderTitle == 0 %}
+
+                                <p style="color: #333; font-family: arial, sans-serif; font-size: 12px; font-weight:bold; text-align:left;">Wednesday ({{ order.date }}):</p>
+
+                                <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #DDD; border-bottom:none;">
+
+                                {% set wednesdayOrderTitle = 1 %}
+
+                            {% endif %}
+
+                            {% if order.day == "Wednesday" and order.orderdetails != 'skip' %}
+
+                                <tr>
+                                    <td width="150" style="color: #333; font-family: arial, sans-serif; font-size: 12px; padding:8px; border-bottom:1px solid #DDD;">{{ order.user }}</td>
+                                    <td style="color: #333; font-family: arial, sans-serif; font-size: 12px; padding:8px; border-bottom:1px solid #DDD;">
+                                        {{ order.orderdetails }}
+                                        {% if order.comments %}
+                                            <br />
+                                            Comments: {{ order.comments }}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+
+                            {% endif %}
+
+                            {% if loop.index == loop.length %}
+                                </table>
+                                <br />
+                            {% endif %}
+
+                        {% endfor %}
+
+
+
+
+                        {% set thursdayOrderTitle = 0 %}
+
+                        {% for order in data %}
+
+                            {% if order.day == "Thursday" and order.orderdetails != 'skip' and thursdayOrderTitle == 0 %}
+
+                                <p style="color: #333; font-family: arial, sans-serif; font-size: 12px; font-weight:bold; text-align:left;">Thursday ({{ order.date }}):</p>
+
+                                <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #DDD; border-bottom:none;">
+
+                                {% set thursdayOrderTitle = 1 %}
+
+                            {% endif %}
+
+                            {% if order.day == "Thursday" and order.orderdetails != 'skip' %}
+
+                                <tr>
+                                    <td width="150" style="color: #333; font-family: arial, sans-serif; font-size: 12px; padding:8px; border-bottom:1px solid #DDD;">{{ order.user }}</td>
+                                    <td style="color: #333; font-family: arial, sans-serif; font-size: 12px; padding:8px; border-bottom:1px solid #DDD;">
+                                        {{ order.orderdetails }}
+                                        {% if order.comments %}
+                                            <br />
+                                            Comments: {{ order.comments }}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+
+                            {% endif %}
+
+                            {% if loop.index == loop.length %}
+                                </table>
+                                <br />
+                            {% endif %}
+
+                        {% endfor %}
+
+                       
+
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+</table>

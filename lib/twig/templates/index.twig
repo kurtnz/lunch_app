@@ -1,0 +1,599 @@
+<!doctype html>
+<!--[if lt IE 7]> <html class="no-js lt-ie9 lt-ie8 lt-ie7" lang="en"> <![endif]-->
+<!--[if IE 7]>    <html class="no-js lt-ie9 lt-ie8" lang="en"> <![endif]-->
+<!--[if IE 8]>    <html class="no-js lt-ie9" lang="en"> <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en"> <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <title></title>
+  <meta name="description" content="">
+
+  <meta name="viewport" content="width=device-width">
+  <link rel="stylesheet" href="web/static/css/bootstrap.css">
+  <link rel="stylesheet" href="web/static/css/bootstrap-responsive.css">
+
+  <script src="web/static/js/libs/modernizr.js"></script>
+</head>
+<body>
+
+	<div id="calendar"></div>
+
+	<div class="container">
+		<div id="loading">
+			<div id="shapeblue" class="bar"></div>
+	    	<div id="shapepink" class="bar"></div>
+	    </div>
+
+		<div class="row-fluid">
+			<section id="users" class="span4 offset-centered text-centered">
+			</section>
+		</div>
+	</div>
+
+	<script src="web/static/js/libs/jquery.js"></script>
+	<script src="web/static/js/libs/underscore.js"></script>
+	<script src="web/static/js/libs/backbone.js"></script>
+	<script>
+
+
+		// Get the date for the start of the week
+		Date.prototype.getWeek = function(start) {
+			//Calcing the starting point
+			start = start || 1;
+			var today = new Date(this.setHours(0, 0, 0, 0));
+			var day = today.getDay() - start;
+			var date = today.getDate() - day;
+
+			// Grabbing Start Date
+			var StartDate = new Date(today.setDate(date));
+			return StartDate;
+		}
+
+		Array.prototype.remove= function(){
+			var what, a= arguments, L= a.length, ax;
+			while(L && this.length){
+				what= a[--L];
+				while((ax= this.indexOf(what))!= -1){
+					this.splice(ax, 1);
+				}
+			}
+			return this;
+		}
+
+
+		$(function() {
+
+			var wwidth = $(window).width();
+            var bluewidth = $("#shapeblue").width();
+
+            $("#shapeblue").css("left", bluewidth - 41);
+
+            var bluepos = $("#shapeblue").position();
+            var movex = $("#shapeblue").width() + 4;
+            $("#shapepink").css("left", bluepos.left + movex);
+
+            var playAnimate;
+
+            function moveleft(el) {
+                $(el).animate({
+                    left: '+='+movex
+                }, 800, function() {
+                    $(el).css("z-index", "-100");
+                });
+            }
+
+            function moveright(el) {
+                $(el).animate({
+                    left: '-='+movex
+                }, 800, function() {
+                    $(el).css("z-index", "100");
+                });
+            }
+
+            function playAnimation() {
+                moveleft("#shapeblue");
+                moveright("#shapeblue");
+                moveright("#shapepink");
+                moveleft("#shapepink");
+            }
+
+            function saveDate(e) {
+
+				if( typeof e == 'string') {
+					var theday = e;
+				} else {
+					var theday = $(e.currentTarget).text()
+				}
+
+				// Set the date
+				var date 		= new Date().getWeek(),
+					weekday 	= date.getDay(),
+					day 		= date.getDate(),
+					month 		= date.getMonth() + 1,
+					year 		= date.getFullYear(),
+					tuesday 	= new Date(+new Date(month + ' ' + day + ', ' + year) + 86400000),
+					wednesday 	= new Date(+new Date(month + ' ' + day + ', ' + year) + (86400000*2)),
+					thursday 	= new Date(+new Date(month + ' ' + day + ', ' + year) + (86400000*3));
+
+				order.set("week", day + '/' + month + '/' + year);
+
+				switch(theday.toLowerCase()) {
+					case 'tuesday':
+						day 	= tuesday.getDate();
+						month 	= tuesday.getMonth() + 1;
+						year 	= tuesday.getFullYear();
+						break;
+					case 'wednesday':
+						day 	= wednesday.getDate();
+						month 	= wednesday.getMonth() + 1;
+						year 	= wednesday.getFullYear();
+						break;
+					case 'thursday':
+						day 	= thursday.getDate();
+						month 	= thursday.getMonth() + 1;
+						year 	= thursday.getFullYear();
+						break;
+				}
+
+				order.set("date", day + '/' + month + '/' + year);
+				status.remove(theday);
+				order.set("day", theday);
+			}
+
+
+			/*
+			*
+			* Models
+			*
+			*/
+
+			// Order by day
+			var OrderModel = Backbone.Model.extend({
+				url: '/save'
+			});
+
+			// Days to place order
+			var Day = Backbone.Model.extend();
+
+			// User model
+			var User = Backbone.Model.extend();
+
+			// Order types
+			var OrderTypeModel = Backbone.Model.extend();
+
+			// Food types
+			var FoodTypeModel = Backbone.Model.extend();
+
+
+			/*
+			*
+			* Collections
+			*
+			*/
+
+
+			var OrderCollection = Backbone.Collection.extend({
+				model: OrderModel
+			});
+
+			var Days = Backbone.Collection.extend({
+				model: Day
+			});
+
+			// Get users from database
+			var Users = Backbone.Collection.extend({
+				model: User
+			});
+
+			// Types of orders
+			var OrderTypeCollection = Backbone.Collection.extend({
+				model: OrderTypeModel
+			});
+
+			// Types of food
+			var FoodTypeCollection = Backbone.Collection.extend({
+				model: FoodTypeModel
+			});
+
+
+			/*
+			*
+			* Views
+			*
+			*/
+
+
+			// List users in select
+			var UsersList = Backbone.View.extend({
+				events: {
+					'change select': 'userSelected'
+				},
+				template:_.template($('#userlist').html()),
+				render:function() {
+					var that = this;
+					that.$el.html('');
+					that.$el.append('<select />');
+					that.$el.find('select').append('<option>Select a user</option>');
+					_.each(this.collection.models, function(user) {
+						that.$el.find('select').append(that.template(user.toJSON()));
+					});
+					return that.$el;
+				},
+				userSelected: function(e) {
+					order.set("user", e.currentTarget.value);
+					approuter.navigate('day', true);
+				}
+			});
+
+			var DayList = Backbone.View.extend({
+				events: {
+					'click .daylist a': 'daySelected',
+					'click .back': 'goBack'
+				},
+				template: _.template($('#dayList').html()),
+				render: function() {
+
+					var that = this;
+					that.$el.html('<ul class="daylist"></ul>');
+
+					_.each(this.collection.models, function(day) {
+						for( var i=0; i<status.length; i++ ) {
+							if(status[i] == day.toJSON().day) {
+								that.$el.find('ul').append(that.template(day.toJSON()));
+							}
+						}
+					});
+					that.$el.append('<a class="back btn">&lt; Back</a>');
+
+					return that.$el;
+				},
+				daySelected: function(e) {
+					saveDate(e);
+					approuter.navigate('order', true);
+					e.preventDefault();
+				},
+				completeOrder: function() {
+					$('body').append('<div class="shadow loading" />');
+					$('#loading').show();
+					setInterval(playAnimation, 500);
+					// Give time for model to save to database - TODO find a better way of doing this
+					// Is there an event for when save is complete?
+					setTimeout(function() {
+						approuter.navigate('order/complete', true);
+					}, 2000);
+				},
+				goBack: function() {
+					approuter.navigate('', true);
+				}
+			});
+
+			// Display order type options
+			var OrderTypeList = Backbone.View.extend({
+				events: {
+					'click .ordertypelist a': 'orderType',
+					'click .back': 'goBack'
+				},
+				template: _.template($('#orderTypeList').html()),
+				render: function() {
+
+					if( this.options.day ) {
+						order.set('day', this.options.day);
+						order.set('user', this.options.user);
+						saveDate(this.options.day);
+					}
+
+					var that = this;
+					that.$el.html('<ul class="ordertypelist">');
+					_.each(this.collection.models, function(type) {
+						that.$el.find('ul').append(that.template(type.toJSON()));
+					});
+					that.$el.append('<a class="back btn">&lt; Back</a>');
+
+					return that.$el;
+				},
+				orderType: function(e) {
+					if( $(e.currentTarget).text().toLowerCase() === 'skip' ) {
+						approuter.navigate('/order/skip', true);
+					} else {
+						order.set("orderType", $(e.currentTarget).text());
+						approuter.navigate($(e.currentTarget).attr('href'), true);
+					}
+					e.preventDefault();
+				},
+				goBack: function() {
+					status.push(order.toJSON().day);
+					order.unset("day");
+					approuter.navigate('day', true);
+				}
+			});
+
+			// Display types of soups, sandwiches etc
+			// Step 4
+			var FoodTypeSelect = Backbone.View.extend({
+				tagName: 'ul',
+				events: {
+					'click .foodTypeSelect a': 'foodType',
+					'click .back': 'goBack'
+				},
+				template: _.template($('#foodTypeSelect').html()),
+				render: function() {
+					if( isComplete ) {
+						window.location = '/review';
+					} else {
+						// Skip this day
+						if( this.collection === undefined ) {
+							this.skipOrder();
+						} else {
+							var that = this;
+							that.$el.append('<ul class="foodTypeSelect"></ul>');
+							_.each(this.collection.models, function(type) {
+								that.$el.find('ul').append(that.template(type.toJSON()));
+							});
+							that.$el.append('<a class="back btn">&lt; Back</a>');
+
+							return that.$el;
+						}
+					}
+				},
+				foodType: function(e) {
+					e.preventDefault();
+					order.set("orderDetails", $(e.currentTarget).text());
+					approuter.navigate('order/comments', true);
+				},
+				// If user has skipped adding an order for a particular day
+				skipOrder: function() {
+					order.set("orderType", 'skip');
+					order.set("orderDetails", 'skip');
+
+					// Save the order
+					var orderSave = new OrderSave();
+				},
+				goBack: function() {
+					approuter.navigate('order', true);
+				}
+			});
+
+			// Add any comments
+			var OrderCommentsView = Backbone.View.extend({
+				events: {
+					'click button': 'saveOrder',
+					'click .wrap input' : 'wrapSelect',
+					'click .sandwich input': 'sandwichSelect'
+				},
+				render: function() {
+					var comments = '<p>Any special requests for ' + order.get('day') + '\'s order?</p><textarea></textarea><br>';
+					if( order.get('orderType') === "Sandwich & Wraps" ) {
+						comments += '<div class="form-inline">';
+						comments += '<label for="wrap-or-sandwich" class="sandwich"><input type="radio" name="wrap-or-sandwich" value="Sandwich" checked="checked"> Sandwich</label>';
+						comments += '<label for="wrap-or-sandwich" class="wrap"><input type="radio" name="wrap-or-sandwich" value="Wrap"> Wrap</label>';
+						comments += '</div><div class="form-inline">';
+						comments += '<label for="bread-type" class="bread"><input type="radio" name="bread-type" value="Sour dough" checked="checked"> Sour dough</label>';
+						comments += '<label for="bread-type" class="bread"><input type="radio" name="bread-type" value="7 grain"> 7 Grain</label>';
+						comments += '</div>';
+					}
+					comments += '<button class="btn btn-primary">Save Order for ' + order.get('day') + '</button>';
+					this.$el.html(comments);
+					return this.$el;
+				},
+				wrapSelect: function() {
+					this.$el.find('.bread').hide();
+					this.$el.find('.bread input').removeAttr('checked');
+				},
+				sandwichSelect: function() {
+					this.$el.find('.bread:first input').attr('checked', 'checked');
+					this.$el.find('.bread').show();
+				},
+				saveOrder: function() {
+					if( $('[name="wrap-or-sandwich"]').length ) {
+						order.set("sandwichorwrap", this.$el.find('[name="wrap-or-sandwich"]:checked').val());
+						order.set("breadtype", this.$el.find('[name="bread-type"]:checked').val());
+					}
+					order.set("comments", this.$el.find('textarea').val());
+
+					// Save the order
+					var orderSave = new OrderSave();
+				}
+			});
+
+			// Save the order view
+			var OrderSave = Backbone.View.extend({
+				initialize: function() {
+					var user = order.get('user');
+					order.save();
+					order.clear();
+					order.set("user", user);
+					approuter.navigate('day', true);
+				}
+			});
+
+
+			// Router
+			var AppRouter = Backbone.Router.extend({
+				routes: {
+					'' 				: 'userSelect',
+					'day'			: 'daySelect',
+					'order/comments': 'orderComments',
+					'order/:type'	: 'orderType',
+					'order/user/:user/day/:day': 'order',
+					'order'			: 'order'
+				},
+				userSelect:function() {
+					var usersCollection = new Users(users);
+					var usersList = new UsersList({
+						collection: usersCollection
+					});
+					$('section').html( usersList.render() );
+				},
+				daySelect: function() {
+					var daysCollection = new Days(days);
+					var daysView = new DayList({
+						collection: daysCollection
+					});
+
+					if(status.length === 0) {
+						isComplete = true;
+						$('section').html( daysView.completeOrder() );
+					} else {
+						$('section').html( daysView.render() );
+					}
+				},
+				order: function(user, day) {
+					var orderTypeCollection = new OrderTypeCollection(foodTypes);
+					var orderTypeList = new OrderTypeList({
+						collection: orderTypeCollection,
+						user: user,
+						day: day
+					});
+					$('section').html( orderTypeList.render() );
+				},
+				orderType: function(type) {
+					switch(type.toLowerCase()) {
+						case 'bagels':
+							var foodTypeCollection = new FoodTypeCollection(bagelTypes);
+							break;
+						case 'boreks':
+							var foodTypeCollection = new FoodTypeCollection(borekTypes);
+							break;
+						case 'salads':
+							var foodTypeCollection = new FoodTypeCollection(saladTypes);
+							break;
+						case 'soup':
+							var foodTypeCollection = new FoodTypeCollection(soupTypes);
+							break;
+						case 'sandwich & wraps':
+							var foodTypeCollection = new FoodTypeCollection(sandwichTypes);
+							break;
+						case 'other':
+							var foodTypeCollection = new FoodTypeCollection(otherTypes);
+							break;
+					}
+					if( type === 'skip' ) {
+						var foodTypeSelect = new FoodTypeSelect();
+						$('section').html( foodTypeSelect.render() );
+					} else {
+						var foodTypeSelect = new FoodTypeSelect({
+							collection: foodTypeCollection
+						});
+						$('section').html( foodTypeSelect.render() );
+					}
+				},
+				orderComments: function() {
+					var orderCommentsView = new OrderCommentsView();
+					$('section').html( orderCommentsView.render() );
+				}
+			});
+
+
+			var users = [
+				{name: 'Kurt'},
+				{name: 'Zoe'},
+				{name: 'Ryan'},
+				{name: 'David.B'},
+				{name: 'Sarah'},
+				{name: 'Yohan'},
+				{name: 'David.G'},
+				{name: 'Nick'},
+				{name: 'Matt'},
+				{name: 'Thilanga'},
+				{name: 'Jess'},
+				{name: 'Dan'},
+				{name: 'Graeme'},
+				{name: 'Gary'},
+				{name: 'Bronwyn'},
+				{name: 'Sylvia'}
+			];
+			var days = [
+				{day: 'Tuesday'},
+				{day: 'Wednesday'},
+				{day: 'Thursday'}
+			];
+			var foodTypes = [
+				{type: 'Sandwich & Wraps'},
+				{type: 'Bagels'},
+				{type: 'Boreks'},
+				{type: 'Salads'},
+				{type: 'Soup'},
+				{type: 'Other'},
+				{type: 'Skip'}
+			];
+			var bagelTypes = [
+				{type: 'Cajun Chicken, Avocado, Relish'},
+				{type: 'Cream Cheese'},
+				{type: 'Smoked Salmon & Cream Cheese'},
+				{type: 'Tomato & Avocado'}
+			];
+			var borekTypes = [
+				{type: 'Cheese & Mushroom'}
+			];
+			var saladTypes = [
+				{type: 'Green salad'},
+				{type: 'Mediterranean salad'},
+				{type: 'Caesar salad'},
+				{type: 'Falafel Salad'},
+				{type: 'Salad of the day'}
+			];
+			var soupTypes = [
+				{type: 'Soup of the day'}
+			];
+			var sandwichTypes = [
+				{type: 'Avocado & Roma Tomato'},
+				{type: 'BBQ Chicken & Bacon'},
+				{type: 'BBQ Steak'},
+				{type: 'Beef Souvlaki'},
+				{type: 'BLT'},
+				{type: 'Caesar Salad'},
+				{type: 'Chicken Satay'},
+				{type: 'Chicken Tandoori'},
+				{type: 'Crispy crumbed barramundi'},
+				{type: 'Falafel'},
+				{type: 'Ham'},
+				{type: 'Shaved Turkey'},
+				{type: 'Sopressa Salami'},
+				{type: 'Smoked Salmon'},
+				{type: 'Thinly Sliced Steak'},
+				{type: 'Veggie'},
+				{type: 'Cheese & Tomato'},
+				{type: 'Cheese, Tomato & Ham'},
+				{type: 'Cheese & Salad'}
+
+			];
+			var otherTypes = [
+				{type: 'Corn fritter'},
+				{type: 'Pide: Beef & Veggies'},
+				{type: 'Chicken rice paper rolls'}
+			];
+
+			var order = new OrderModel();
+			var orderCollection = new OrderCollection();
+			var status = ['Tuesday', 'Wednesday', 'Thursday'];
+			var isComplete = false;
+
+			// Create router
+			var approuter = new AppRouter();
+			Backbone.history.start({pushState: true});
+
+
+
+
+		});
+	</script>
+
+	<script type="text/template" id="dayList">
+		<li><a href="#" class="btn btn-primary"><%=day%></a></li>
+	</script>
+
+	<script type="text/template" id="userlist">
+		<option value="<%=name%>"><%=name%></option>
+	</script>
+
+	<script type="text/template" id="orderTypeList">
+		<li><a href="/order/<%=type%>" class="btn btn-primary"><%=type%></a></li>
+	</script>
+
+	<script type="text/template" id="foodTypeSelect">
+		<li><a href="" class="btn btn-primary"><%=type%></a></li>
+	</script>
+
+</body>
+</html>

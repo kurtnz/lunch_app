@@ -1,0 +1,9 @@
+{
+    "require": {
+        "silex/silex": "1.0.*",
+        "doctrine/dbal": "2.2.*",
+        "swiftmailer/swiftmailer": ">=4.1.2,<4.2-dev",
+        "twig/extensions": "*"
+    },
+    "minimum-stability": "dev"
+}
